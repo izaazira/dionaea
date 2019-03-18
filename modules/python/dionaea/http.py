@@ -251,6 +251,8 @@ class httpd(connection):
         self.template_error_pages = None
         self.template_file_extension = ".j2"
         self.template_values = {}
+        self.modsec = None
+        self.modsec_rule = None
 
     def _apply_template_config(self, config):
         """
@@ -417,6 +419,9 @@ class httpd(connection):
         self.soap_enabled = True if config.get("soap_enabled") else False
 
         self.root = config.get("root")
+        self.modsec = config.get("modsec")
+        self.modsec_rule = config.get("modsec_rule")
+
         if self.root is None:
             logger.warningfigError("Root directory not configured")
         else:
