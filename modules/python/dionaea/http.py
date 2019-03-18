@@ -41,6 +41,7 @@ import urllib.parse
 import re
 import tempfile
 from datetime import datetime
+from dionaea.mycertmodsec import MSecAnalyzer
 
 try:
     import jinja2
@@ -215,7 +216,9 @@ class httpd(connection):
         "template_autoindex",
         "template_error_pages",
         "template_file_extension",
-        "template_values"
+        "template_values",
+        "modsec",
+        "modsec_rule"
     ]
 
     def __init__(self, proto="tcp"):
@@ -450,6 +453,8 @@ class httpd(connection):
             if eoh == -1:
                 return 0
 
+            self.modsec_analyzer(data)
+
             header = data[0:eoh]
             data = data[soc:]
             self.header = httpreq(header)
@@ -563,6 +568,21 @@ class httpd(connection):
             return 0
 
         return len(data)
+
+    def modsec_analyzer(self,data):
+
+        # Initialize modsec
+        modsec = MSecAnalyzer(data,self.modsec,self.modsec_rule)
+
+        # Execute analyzation
+        modsec.analyzeReq()
+
+        # If get attack, report
+        if modsec.getModSecStatus():
+            icd = incident("dionaea.modules.python.http.webattack.modsec")
+            icd.con = self
+            icd.modsec = modsec.getModSecResult()
+            icd.report()
 
     def handle_GET(self):
         """Handle the GET method. Send the header and the file."""

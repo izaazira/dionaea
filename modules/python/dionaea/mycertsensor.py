@@ -262,6 +262,9 @@ class handler(ihandler):
             'timestamp': str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
         }))
 
+    def handle_incident_dionaea_modules_python_http_webattack_modsec(self, icd):
+        self.submitArtifact(str(self.connection[icd.con]), 'webattack', icd.modsec)
+
     def handle_incident_dionaea_connection_tcp_listen(self, icd):
         self.connection_insert( icd, 'listen')
 

@@ -31,3 +31,6 @@
       # used to specify additional template values
       values:
         # full_name: nginx/1.1
+    modsec: "/tmp/audit.log"
+    modsec_rule: "../dionaea/conf/etc/include.conf"
+
