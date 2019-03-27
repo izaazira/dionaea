@@ -53,14 +53,12 @@ class MSecAnalyzer():
             version = version.split('/')[1].strip('\r')
         except ValueError:
             print ('Invalid request')
-            sys.exit(0)
 
         while lines:
             line = lines.pop(0)
             if not line:
                 break
             headers.append(line.strip('\r'))
-
 
         return method, uri, version, headers
 
@@ -226,7 +224,10 @@ class MSecAnalyzer():
             dictfModSec["raw_request"] = self.req
             dictfModSec["url_path"] = unquote(self.uri)
             dictfModSec["event_name"] = '"webattack","modsec"'  
-            dictfModSec["attack_type"] = self.getAttackType(dictfModSec["detail"])
+            if dictfModSec.get("details"): 
+                dictfModSec["attack_type"] = self.getAttackType(dictfModSec["detail"])
+            else:
+                dictfModSec["attack_type"] = ""
             dictfModSec["post_payload"] = unquote(self.data)
             dictfModSec["severity"] = self.getMeanSeverity(listModSec)
             dictfModSec["timestamp"] = str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
