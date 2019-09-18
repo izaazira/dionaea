@@ -65,14 +65,16 @@ class MSecAnalyzer():
 
     def analyzeReq(self):
         """Analyse the request using modsec"""
-        
         self.header,self.data = self.splitHeaderData(self.req)
         self.method, self.uri, self.version, self.headers = self.parseRequest(self.header)
 
         try:
             modsec = ModSecurity()
             rules = Rules()
-            rules.loadFromUri(self.modsec_rule)
+            result = rules.loadFromUri(self.modsec_rule)
+            if not result:
+                print("Error in load modsec rule", self.modsec_rule)
+                exit()         
             transaction = Transaction(modsec, rules, None)
         except rules.getParserError():
             print ("Unable to parse rules: %s " % rules.getParserError())
@@ -107,32 +109,16 @@ class MSecAnalyzer():
         # Get type of attack
         listAttacks = re.findall(r"(?:SQLI=\d+|XSS=\d+|RFI=\d+|LFI=\d+|RCE=\d+|PHPI=\d+|HTTP=\d+|SESS=\d+)",attackStr,re.IGNORECASE)
 
-        joinAttacks = ""
+        AttacksArr = []
 
         for x in listAttacks:
             if x.split("=")[1] != '0':
-                if not joinAttacks:
-                    joinAttacks = '"' + x.split("=")[0] + '"'
-                else:
-                    joinAttacks = ', "' + x.split("=")[0] + '"'
+                AttacksArr.append(str(x.split("=")[0]))
 
-        if not joinAttacks:
-            joinAttacks = '"unknown"'
+        if not AttacksArr:
+            AttacksArr.append("unknown")
 
-        return joinAttacks
-
-
-    def getMeanSeverity(self, listSeverity):
-
-        totalSeverity = 0
-        for x in listSeverity:
-            totalSeverity = totalSeverity + int(x['severity'])
-
-        if listSeverity:
-            return int(totalSeverity/len(listSeverity))
-
-        return 0
-
+        return AttacksArr
 
     def headerToJSON(self):
 
@@ -160,16 +146,14 @@ class MSecAnalyzer():
                 reader = f.read()
             with open(self.auditLog, 'w'): pass
         except:
-            print("Error in get log data")
+            print("Error in get log data", self.auditLog)
             return 0
         
         return reader
 
 
     def getModSecResult(self):
-       
-        # if not self.resultLog:
-        #     self.resultLog = self.readFromFile()
+    
 
         if self.getModSecStatus():
             # Create list from audit log - only get modsec log
@@ -178,7 +162,7 @@ class MSecAnalyzer():
             # Empty list
             dictfModSec = {}
             listModSec = []
-            listTags = ""
+            TagsArr = []
 
             for modSec in modSecLists:
 
@@ -200,10 +184,9 @@ class MSecAnalyzer():
 
                     # Classify all tag under one tag
                     if rawTag[:eok] == "tag":
-                        if not listTags:
-                            listTags = '"' + re.sub(r"[\"]",r"",rawTag[eok+1:]) + '"'
-                        if re.sub(r"[\"]",r"",rawTag[eok+1:]) not in listTags:
-                            listTags = listTags +', "' + re.sub(r"[\"]",r"",rawTag[eok+1:]) + '"'
+                        if re.sub(r"[\"]",r"",rawTag[eok+1:]) not in TagsArr:
+                            TagsArr.append(re.sub(r"[\"]",r"",rawTag[eok+1:]))
+                            
                     else:
                         if rawTag[:eok] not in ("accuracy","unique_id","rev","hostname","uri"):
                             if rawTag[:eok] == "id":
@@ -218,18 +201,18 @@ class MSecAnalyzer():
 
 
             dictfModSec["modsec"] = listModSec
-            dictfModSec["tags"] = listTags
+            dictfModSec["tags"] = TagsArr
             dictfModSec["http_method"] = self.method
             dictfModSec["headers"] = self.headerToJSON()
             dictfModSec["raw_request"] = self.req
             dictfModSec["url_path"] = unquote(self.uri)
-            dictfModSec["event_name"] = '"webattack","modsec"'  
-            if dictfModSec.get("details"): 
-                dictfModSec["attack_type"] = self.getAttackType(dictfModSec["detail"])
+            dictfModSec["event_name"] = "unknown" 
+            if dictfModSec.get("detail"): 
+                dictfModSec["modsec_attack_type"] = self.getAttackType(dictfModSec["detail"])
             else:
-                dictfModSec["attack_type"] = ""
+                dictfModSec["modsec_attack_type"] = ["web.scan"]
             dictfModSec["post_payload"] = unquote(self.data)
-            dictfModSec["severity"] = self.getMeanSeverity(listModSec)
+            dictfModSec["severity"] = "unknown"
             dictfModSec["timestamp"] = str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             
             return json.dumps(dictfModSec)
