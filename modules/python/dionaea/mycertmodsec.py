@@ -72,9 +72,8 @@ class MSecAnalyzer():
             modsec = ModSecurity()
             rules = Rules()
             result = rules.loadFromUri(self.modsec_rule)
-            if not result:
-                print("Error in load modsec rule", self.modsec_rule)
-                exit()         
+            if result < 0:
+                print("Error in load modsec rule", self.modsec_rule)     
             transaction = Transaction(modsec, rules, None)
         except rules.getParserError():
             print ("Unable to parse rules: %s " % rules.getParserError())
